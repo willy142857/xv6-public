@@ -51,8 +51,8 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+    if(growproc(n) < 0)
+      return -1;
   return addr;
 }
 
@@ -88,4 +88,21 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+//return per page size in bytes
+int 
+sys_getpagesize(void)
+{
+  return PGSIZE;
+}
+
+int
+sys_alloc(void)
+{
+  char *type;
+  int count;
+  argstr(0, &type);
+  argint(1, &count);
+  return alloc(type, count);
 }

@@ -23,6 +23,11 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int getpagesize(void);
+void* mmap(uint length, int fd, uint offset);
+int alloc(char*, int);
+//int mprotect(void *addr, uint len, int prot);
+
 
 // ulib.c
 int stat(const char*, struct stat*);

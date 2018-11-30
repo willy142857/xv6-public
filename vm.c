@@ -6,6 +6,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "mmap.h"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -57,7 +58,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
+int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
@@ -392,3 +393,64 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
+int lazyalloc(char *addr)
+{
+  cprintf("Page fault: (0x%x)\n", (uint)addr);
+  
+  char *mem = kalloc();
+  if (mem == 0) {
+    cprintf("Out of memory\n");
+    return -1;
+  }
+  cprintf("lazy alloc\n");
+  memset(mem, 0, PGSIZE);
+  
+  return mappages(myproc()->pgdir, addr, PGSIZE, V2P(mem), PTE_W | PTE_U);
+}
+
+int setpageperms(pde_t* pgdir, void* va, int perm)
+{
+  pte_t *pte = walkpgdir(pgdir, va, 0);
+  if(pte == 0)
+    return -1;
+  *pte = ((*pte & ~0xFFF) | (perm & 0xFFF));
+  return 1;
+}
+
+// int
+// mprotect(void* addr, uint len, int prot)
+// {
+//   pte_t *pgdir = myproc()->pgdir;
+//   char *a, *last;
+//   cprintf("*addr: %d\n",(uint)addr);
+
+//   a = (char*)PGROUNDDOWN((uint)addr);
+//   last = (char*)PGROUNDDOWN(((uint)addr) + len - 1);
+
+//   int perm = 0;
+//   switch (prot) {
+//     case PROT_NONE:
+//       perm |= PTE_P;
+//       break;
+//     case PROT_READ:
+//       perm |= (PTE_P | PTE_U);
+//       break;
+//     case PROT_WRITE:
+//       perm |= (PTE_P | PTE_W);
+//       break;
+//     case PROT_READ | PROT_WRITE:
+//       perm |= (PTE_P | PTE_W | PTE_U);
+//   }
+
+//   for(;;) {
+//     if(!setpageperms(pgdir, a, perm))
+//       return -1;
+//     if(a == last)
+//       break;
+//     a += PGSIZE;
+//   }
+  
+//   lcr3(V2P(pgdir));
+  
+//   return 0;
+// }

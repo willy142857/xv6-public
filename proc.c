@@ -6,6 +6,10 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "mmap.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct {
   struct spinlock lock;
@@ -112,6 +116,8 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->mmap_counter = 0;
+  p->mmap_sz = 0;
   return p;
 }
 
@@ -163,13 +169,14 @@ growproc(int n)
 
   sz = curproc->sz;
   if(n > 0){
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
-      return -1;
+    //if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+      //return -1;
+    curproc->sz = sz + n;
   } else if(n < 0){
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   }
-  curproc->sz = sz;
+  
   switchuvm(curproc);
   return 0;
 }
@@ -531,4 +538,65 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+void*
+mmap(uint length, struct file* file, int offset)
+{
+  cprintf("mmap\n");
+  uint oldsz = myproc()->mmap_sz;
+  struct mmap_struct *mmap = &(myproc()->mmap_list[myproc()->mmap_counter]);
+  myproc()->mmap_counter++;
+  *mmap = (struct mmap_struct) {
+    .start = (char*)(oldsz + MMAPBASE),
+    .length = length,
+    .f = (file == 0) ? 0 : filedup(file),
+    .offset = offset,
+  };
+  if (mmap->f != 0) {
+    ilock(file->ip);
+    file->off = offset;
+    iunlock(file->ip);
+  }
+  myproc()->mmap_sz += PGROUNDUP(length);
+  return (void*)(oldsz + MMAPBASE);
+}
+
+int
+lazymm(char *addr) 
+{
+  cprintf("lazy maping at 0x%x\n", addr);
+  for(int i = 0; i < myproc()->mmap_counter; i++) {
+    struct mmap_struct *mmap = &myproc()->mmap_list[i];
+    if(addr >= mmap->start && addr < mmap->start + PGROUNDUP(mmap->length)) {
+      pde_t* pgdir = myproc()->pgdir;
+      uint va = PGROUNDDOWN((uint)addr); 
+      allocuvm(pgdir, va, va + PGSIZE);
+      if(mmap->f != 0) {
+        fileread(mmap->f, (char*)va, PGSIZE);
+        cprintf("Read from file\n");
+      }
+    }
+  }
+  return 0;
+}
+
+int alloc(char *type, int count)
+{
+  if (strncmp(type, "int", 3) == 0) {
+    cprintf("%d %s\n", sizeof(int) * count, "bytes");
+  }
+  else if (strncmp(type, " char ", 4) == 0) {
+    cprintf("%d %s\n", sizeof(char) * count, "bytes");
+  }
+  else if (strncmp(type, "short", 5) == 0) {
+    cprintf("%d %s\n", sizeof(short) * count, "bytes");
+  }
+  else if (strncmp(type, " float ", 5) == 0) {
+    cprintf("%d %s\n", sizeof(float) * count, "bytes");
+  }
+  else if (strncmp(type, "double", 6) == 0) {
+    cprintf("%d %s\n", sizeof(double) * count, "bytes");
+  }
+  return 22;
 }
