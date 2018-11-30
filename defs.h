@@ -120,7 +120,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-
+void*           mmap(uint, struct file*, int);
+int             lazymm(char*);
+int             alloc(char*, int);
 // swtch.S
 void            swtch(struct context**, struct context*);
 
@@ -185,6 +187,9 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-
+int 			mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+int             lazyalloc(char *addr);
+int             setpteperms(pde_t* pgdir, void* va, int perm);
+// int             mprotect(void* addr, uint len, int prot);
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
