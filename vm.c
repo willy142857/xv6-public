@@ -395,14 +395,14 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 int lazyalloc(char *addr)
 {
-  cprintf("Page fault: (0x%x)\n", (uint)addr);
+  //cprintf("Page fault: (0x%x)\n", (uint)addr);
   
   char *mem = kalloc();
   if (mem == 0) {
     cprintf("Out of memory\n");
     return -1;
   }
-  cprintf("lazy alloc\n");
+  //cprintf("lazy alloc\n");
   memset(mem, 0, PGSIZE);
   
   return mappages(myproc()->pgdir, addr, PGSIZE, V2P(mem), PTE_W | PTE_U);

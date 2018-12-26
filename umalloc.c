@@ -88,3 +88,11 @@ malloc(uint nbytes)
         return 0;
   }
 }
+
+void*
+calloc(uint n, uint bytes)
+{
+  void *addr = malloc(n * bytes);
+  memset(addr, 0, n);
+  return addr;
+}
